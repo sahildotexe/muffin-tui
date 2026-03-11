@@ -2,6 +2,8 @@
 
 `muffintui` is the crates.io package for a Rust terminal workspace that runs as the `muffin` command.
 
+![muffin TUI screenshot](./muffin-tui.png)
+
 It gives you four panes inside a project directory:
 
 - Files
