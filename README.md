@@ -57,11 +57,11 @@ If you still need to authenticate, run:
 codex login
 ```
 
-Then confirm the CLI is ready before starting `muffintui`.
+Then confirm the CLI is ready before starting `muffin`.
 
 ### 3. Sanity check
 
-Before installing or running `muffintui`, this should work:
+Before installing or running `muffin`, this should work:
 
 ```bash
 cargo --version
@@ -76,6 +76,12 @@ Install from crates.io:
 cargo install muffintui
 ```
 
+This installs the executable as:
+
+```bash
+muffin
+```
+
 Install from the local checkout:
 
 ```bash
@@ -87,14 +93,14 @@ cargo install --path .
 Launch in the current directory:
 
 ```bash
-muffintui
+muffin
 ```
 
 Launch against another project:
 
 ```bash
 cd /path/to/project
-muffintui
+muffin
 ```
 
 Run without installing during local development:

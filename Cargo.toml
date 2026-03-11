@@ -1,6 +1,6 @@
 [package]
 name = "muffintui"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 description = "A terminal workspace that combines a file tree, editor, shell, and embedded Codex pane"
 license = "MIT"
@@ -10,6 +10,10 @@ homepage = "https://github.com/sahildotexe/muffin-tui"
 documentation = "https://docs.rs/muffintui"
 keywords = ["tui", "terminal", "editor", "codex", "developer-tools"]
 categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "muffin"
+path = "src/main.rs"
 
 [dependencies]
 crossterm = "0.29"
