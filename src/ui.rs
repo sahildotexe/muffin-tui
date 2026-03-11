@@ -123,29 +123,29 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         Style::default().fg(theme.title).bg(theme.pane_bg)
     };
 
-    let codex_header = Paragraph::new(Line::from(vec![
-        Span::styled(" Codex ", codex_header_style),
+    let right_pane_header = Paragraph::new(Line::from(vec![
+        Span::styled(format!(" {} ", app.right_pane_mode.pane_title()), codex_header_style),
         Span::styled(
             format!("live session  [{0}]  Shift+Tab theme", theme.name),
             Style::default().fg(theme.muted).bg(theme.pane_bg),
         ),
     ]))
     .style(Style::default().bg(theme.pane_bg));
-    frame.render_widget(codex_header, codex_chunks[0]);
+    frame.render_widget(right_pane_header, codex_chunks[0]);
 
     frame.render_widget(
         Block::default().style(Style::default().bg(theme.pane_bg)),
         codex_chunks[1],
     );
 
-    let codex_output_lines = if let Some(codex) = app.codex.as_mut() {
+    let codex_output_lines = if let Some(session) = app.right_pane_session.as_mut() {
         let width = codex_chunks[1].width.max(1);
         let height = codex_chunks[1].height.max(1);
-        let _ = codex.resize(width, height);
-        codex.snapshot_lines(height, width, theme)
+        let _ = session.resize(width, height);
+        session.snapshot_lines(height, width, theme)
     } else {
         vec![Line::styled(
-            app.codex_status.as_str(),
+            app.right_pane_status.as_str(),
             Style::default().fg(theme.muted).bg(theme.pane_bg),
         )]
     };

@@ -1,5 +1,5 @@
 use muffintui::{
-    codex::{ansi_256_to_ratatui, color_from_vt100, io_other},
+    codex::{SessionMode, ansi_256_to_ratatui, color_from_vt100, io_other},
     theme::THEMES,
 };
 use ratatui::style::Color;
@@ -27,4 +27,24 @@ fn wraps_custom_error_as_io_error() {
     let err = io_other("boom");
     assert_eq!(err.kind(), ErrorKind::Other);
     assert_eq!(err.to_string(), "boom");
+}
+
+#[test]
+fn session_modes_expose_expected_titles_and_statuses() {
+    assert_eq!(SessionMode::Shell.pane_title(), "Shell");
+    assert_eq!(SessionMode::Codex.pane_title(), "Codex");
+    assert_eq!(SessionMode::Claude.pane_title(), "Claude");
+
+    assert_eq!(SessionMode::Shell.success_status(), "Shell session connected");
+    assert_eq!(SessionMode::Codex.success_status(), "Codex session connected");
+    assert_eq!(SessionMode::Claude.success_status(), "Claude session connected");
+}
+
+#[test]
+fn shell_mode_uses_shell_env_or_fallback() {
+    let shell = SessionMode::Shell.command();
+    assert!(!shell.is_empty());
+
+    assert_eq!(SessionMode::Codex.command(), "codex");
+    assert_eq!(SessionMode::Claude.command(), "claude");
 }

@@ -2,7 +2,10 @@ use std::{
     io,
     io::{Read, Write},
     path::Path,
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
     thread,
 };
 
@@ -15,15 +18,62 @@ use ratatui::{
 
 use crate::theme::Theme;
 
-pub struct CodexSession {
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum SessionMode {
+    Shell,
+    Codex,
+    Claude,
+}
+
+impl SessionMode {
+    pub fn command(self) -> String {
+        match self {
+            Self::Shell => std::env::var("SHELL").unwrap_or_else(|_| "sh".to_string()),
+            Self::Codex => "codex".to_string(),
+            Self::Claude => "claude".to_string(),
+        }
+    }
+
+    pub fn pane_title(self) -> &'static str {
+        match self {
+            Self::Shell => "Shell",
+            Self::Codex => "Codex",
+            Self::Claude => "Claude",
+        }
+    }
+
+    pub fn success_status(self) -> String {
+        match self {
+            Self::Shell => "Shell session connected".to_string(),
+            Self::Codex => "Codex session connected".to_string(),
+            Self::Claude => "Claude session connected".to_string(),
+        }
+    }
+
+    pub fn failure_status(self, err: &io::Error) -> String {
+        match self {
+            Self::Shell => format!("Failed to start shell session: {err}"),
+            Self::Codex => format!("Failed to start codex session: {err}"),
+            Self::Claude => format!("Failed to start claude session: {err}"),
+        }
+    }
+}
+
+pub struct CommandSession {
     master: Box<dyn MasterPty + Send>,
     writer: Box<dyn io::Write + Send>,
     child: Box<dyn Child + Send + Sync>,
     parser: Arc<Mutex<vt100::Parser>>,
+    finished: Arc<AtomicBool>,
 }
 
-impl CodexSession {
-    pub fn start(cwd: &Path, cols: u16, rows: u16) -> io::Result<Self> {
+impl CommandSession {
+    pub fn start(mode: SessionMode, cwd: &Path, cols: u16, rows: u16) -> io::Result<Self> {
+        Self::start_command(&mode.command(), cwd, cols, rows)
+    }
+
+    #[doc(hidden)]
+    pub fn start_command(command: &str, cwd: &Path, cols: u16, rows: u16) -> io::Result<Self> {
         let pty_system = native_pty_system();
         let pty_pair = pty_system
             .openpty(PtySize {
@@ -34,7 +84,7 @@ impl CodexSession {
             })
             .map_err(io_other)?;
 
-        let mut cmd = CommandBuilder::new("codex");
+        let mut cmd = CommandBuilder::new(command);
         cmd.env("TERM", "xterm-256color");
         cmd.cwd(cwd);
         let child = pty_pair.slave.spawn_command(cmd).map_err(io_other)?;
@@ -48,6 +98,8 @@ impl CodexSession {
             20_000,
         )));
         let parser_reader = Arc::clone(&parser);
+        let finished = Arc::new(AtomicBool::new(false));
+        let finished_reader = Arc::clone(&finished);
 
         thread::spawn(move || {
             let mut buf = [0u8; 8192];
@@ -55,8 +107,9 @@ impl CodexSession {
                 match reader.read(&mut buf) {
                     Ok(0) => {
                         if let Ok(mut parser) = parser_reader.lock() {
-                            parser.process(b"\r\n[codex session ended]\r\n");
+                            parser.process(b"\r\n[session ended]\r\n");
                         }
+                        finished_reader.store(true, Ordering::SeqCst);
                         break;
                     }
                     Ok(n) => {
@@ -66,8 +119,9 @@ impl CodexSession {
                     }
                     Err(_) => {
                         if let Ok(mut parser) = parser_reader.lock() {
-                            parser.process(b"\r\n[codex read error]\r\n");
+                            parser.process(b"\r\n[session read error]\r\n");
                         }
+                        finished_reader.store(true, Ordering::SeqCst);
                         break;
                     }
                 }
@@ -79,6 +133,7 @@ impl CodexSession {
             writer,
             child,
             parser,
+            finished,
         })
     }
 
@@ -213,9 +268,13 @@ impl CodexSession {
             )]
         }
     }
+
+    pub fn is_finished(&self) -> bool {
+        self.finished.load(Ordering::SeqCst)
+    }
 }
 
-impl Drop for CodexSession {
+impl Drop for CommandSession {
     fn drop(&mut self) {
         let _ = self.child.kill();
     }

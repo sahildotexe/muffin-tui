@@ -7,18 +7,19 @@ It gives you four panes inside a project directory:
 - Files
 - File Viewer / Diff Viewer
 - Terminal
-- Codex
+- Shell / Codex / Claude
 
 It starts in the current working directory and uses that directory as:
 
 - the root of the file tree
 - the working directory for shell commands
-- the working directory for the embedded `codex` session
+- the working directory for the right-hand interactive session
 
 ## Requirements
 
 - Rust and Cargo
-- `codex` installed and available on `PATH`
+- `codex` on `PATH` if you want `--codex`
+- `claude` on `PATH` if you want `--claude`
 
 ## Setup Prerequisites
 
@@ -43,23 +44,27 @@ rustc --version
 cargo --version
 ```
 
-### 2. Install and authenticate Codex CLI
+### 2. Install optional right-pane CLIs
 
-`muffin` launches the `codex` command inside the Codex pane, so the CLI must already be installed and authenticated on your machine.
+By default, `muffin` starts a shell in the right pane.
 
-Verify that the command is available:
+If you want to start directly in Codex mode, verify that `codex` is available:
 
 ```bash
 codex --version
 ```
 
-If you still need to authenticate, run:
+If needed, authenticate it:
 
 ```bash
 codex login
 ```
 
-Then confirm the CLI is ready before starting `muffin`.
+If you want to start directly in Claude mode, verify that `claude` is available:
+
+```bash
+claude --version
+```
 
 ### 3. Sanity check
 
@@ -67,7 +72,6 @@ Before installing or running `muffin`, this should work:
 
 ```bash
 cargo --version
-codex --version
 ```
 
 ## Install
@@ -100,6 +104,18 @@ Launch in the current directory:
 muffin
 ```
 
+Launch with Codex in the right pane:
+
+```bash
+muffin --codex
+```
+
+Launch with Claude in the right pane:
+
+```bash
+muffin --claude
+```
+
 Launch against another project:
 
 ```bash
@@ -113,6 +129,13 @@ Run without installing during local development:
 cargo run
 ```
 
+Pass startup flags through Cargo with an extra `--`:
+
+```bash
+cargo run -- --codex
+cargo run -- --claude
+```
+
 ## What It Does
 
 - Shows a navigable file tree rooted at the current directory
@@ -120,7 +143,8 @@ cargo run
 - Highlights source code in normal file view with theme-aware colors
 - Toggles a diff viewer against `HEAD~1`
 - Runs shell commands inside the built-in terminal pane with `sh -lc`
-- Embeds a live `codex` terminal session in the right pane
+- Starts the right pane as a shell by default
+- Can start the right pane with `codex` or `claude`
 - Cycles between three built-in themes
 - Ships with integration tests under `tests/`
 
@@ -129,8 +153,9 @@ Notes:
 - `.git` and `target` are intentionally hidden from the file tree
 - The built-in terminal pane starts empty
 - Diff mode falls back to a message when the repository has no `HEAD~1`
-- If the initial `codex` launch fails, pressing `Enter` in the Codex pane retries the session
-- If `codex` is not installed, the rest of the TUI still works and the Codex pane shows the startup error
+- If the initial right-pane launch fails, pressing `Enter` in that pane retries the same mode
+- If a `codex` or `claude` session exits, the app automatically switches that pane back to a shell
+- If `codex` or `claude` is not installed, the rest of the TUI still works and the right pane shows the startup error
 
 ## Keybindings
 
@@ -164,11 +189,11 @@ Notes:
 - `Home`: jump to the oldest visible terminal history
 - `End`: jump back to the live prompt
 
-### Codex Pane
+### Right Pane
 
-- Regular typing: send input to the embedded `codex` session
+- Regular typing: send input to the active shell, Codex, or Claude session
 - `Enter`: submit input, or retry the session if startup failed
-- `Ctrl+C`: send interrupt to `codex`
+- `Ctrl+C`: send interrupt to the active right-pane session
 - `Arrow keys`, `PageUp`, `PageDown`, `Home`, `End`, `Tab`, `Backspace`: forwarded to the embedded session
 
 ## Publish

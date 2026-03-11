@@ -9,7 +9,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::widgets::ListState;
 
 use crate::{
-    codex::CodexSession,
+    codex::{CommandSession, SessionMode},
     file_tree::{FileEntry, collect_visible_file_entries, collapse_directory},
     terminal::{
         handle_scrollback_key, is_terminal_clear_command, push_capped_line, run_shell_command,
@@ -73,23 +73,24 @@ pub struct App {
     pub terminal_output: Vec<String>,
     pub terminal_input: String,
     pub terminal_scroll: usize,
-    pub codex: Option<CodexSession>,
-    pub codex_status: String,
+    pub right_pane_mode: SessionMode,
+    pub right_pane_session: Option<CommandSession>,
+    pub right_pane_status: String,
     expanded_dirs: HashSet<PathBuf>,
     editor_path: Option<PathBuf>,
 }
 
 impl App {
-    pub fn new() -> io::Result<Self> {
+    pub fn new(mode: SessionMode) -> io::Result<Self> {
         let cwd = std::env::current_dir()?;
         let expanded_dirs = HashSet::new();
         let files = collect_visible_file_entries(&cwd, &expanded_dirs)?;
         let mut file_state = ListState::default();
         file_state.select((!files.is_empty()).then_some(0));
 
-        let (codex, codex_status) = match CodexSession::start(&cwd, 80, 24) {
-            Ok(session) => (Some(session), "Codex session connected".to_string()),
-            Err(err) => (None, format!("Failed to start codex session: {}", err)),
+        let (right_pane_session, right_pane_status) = match CommandSession::start(mode, &cwd, 80, 24) {
+            Ok(session) => (Some(session), mode.success_status()),
+            Err(err) => (None, mode.failure_status(&err)),
         };
 
         Ok(Self {
@@ -109,14 +110,17 @@ impl App {
             terminal_output: Vec::new(),
             terminal_input: String::new(),
             terminal_scroll: 0,
-            codex,
-            codex_status,
+            right_pane_mode: mode,
+            right_pane_session,
+            right_pane_status,
             expanded_dirs,
             editor_path: None,
         })
     }
 
-    pub fn on_tick(&mut self) {}
+    pub fn on_tick(&mut self) {
+        self.fallback_to_shell_if_needed();
+    }
 
     pub fn on_key(&mut self, key: KeyEvent) {
         if key.kind != KeyEventKind::Press {
@@ -125,9 +129,10 @@ impl App {
 
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
             if self.focus == Focus::Codex {
-                if let Some(codex) = self.codex.as_mut() {
-                    if let Err(err) = codex.send_ctrl_c() {
-                        self.codex_status = format!("Failed to send Ctrl+C to codex: {}", err);
+                if let Some(session) = self.right_pane_session.as_mut() {
+                    if let Err(err) = session.send_ctrl_c() {
+                        self.right_pane_status =
+                            format!("Failed to send Ctrl+C to {}: {}", self.right_pane_mode.pane_title().to_lowercase(), err);
                     }
                 }
             } else {
@@ -161,18 +166,19 @@ impl App {
                 }
             }
             Focus::Codex => {
-                if let Some(codex) = self.codex.as_mut() {
-                    if let Err(err) = codex.send_key(key) {
-                        self.codex_status = format!("Codex input error: {}", err);
+                if let Some(session) = self.right_pane_session.as_mut() {
+                    if let Err(err) = session.send_key(key) {
+                        self.right_pane_status =
+                            format!("{} input error: {}", self.right_pane_mode.pane_title(), err);
                     }
                 } else if key.code == KeyCode::Enter {
-                    match CodexSession::start(&self.root_dir, 80, 24) {
+                    match CommandSession::start(self.right_pane_mode, &self.root_dir, 80, 24) {
                         Ok(session) => {
-                            self.codex = Some(session);
-                            self.codex_status = "Codex session connected".to_string();
+                            self.right_pane_session = Some(session);
+                            self.right_pane_status = self.right_pane_mode.success_status();
                         }
                         Err(err) => {
-                            self.codex_status = format!("Failed to start codex session: {}", err);
+                            self.right_pane_status = self.right_pane_mode.failure_status(&err);
                         }
                     }
                 }
@@ -346,8 +352,9 @@ impl App {
             terminal_output: vec!["existing".to_string()],
             terminal_input: String::new(),
             terminal_scroll: 0,
-            codex: None,
-            codex_status: "Failed to start codex session".to_string(),
+            right_pane_mode: SessionMode::Shell,
+            right_pane_session: None,
+            right_pane_status: "Failed to start shell session".to_string(),
             expanded_dirs: HashSet::new(),
             editor_path: None,
         }
@@ -363,6 +370,35 @@ fn viewer_title(path: Option<&Path>, mode: EditorMode) -> String {
     match path {
         Some(path) => format!("{label} - {} [{}] Ctrl+D toggle", path.display(), mode.label()),
         None => format!("{label} [{}]", mode.label()),
+    }
+}
+
+impl App {
+    fn fallback_to_shell_if_needed(&mut self) {
+        let should_fallback = self.right_pane_mode != SessionMode::Shell
+            && self
+                .right_pane_session
+                .as_ref()
+                .is_some_and(CommandSession::is_finished);
+
+        if !should_fallback {
+            return;
+        }
+
+        self.right_pane_session = None;
+        self.right_pane_mode = SessionMode::Shell;
+
+        match CommandSession::start(SessionMode::Shell, &self.root_dir, 80, 24) {
+            Ok(session) => {
+                self.right_pane_session = Some(session);
+                self.right_pane_status =
+                    "Previous session ended. Switched to shell.".to_string();
+            }
+            Err(err) => {
+                self.right_pane_status =
+                    format!("Previous session ended. Failed to start shell: {err}");
+            }
+        }
     }
 }
 
