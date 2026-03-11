@@ -1,6 +1,8 @@
 # muffintui
 
-`muffintui` is a Rust terminal workspace for working inside a project directory with four panes:
+`muffintui` is the crates.io package for a Rust terminal workspace that runs as the `muffin` command.
+
+It gives you four panes inside a project directory:
 
 - Files
 - Editor
@@ -43,7 +45,7 @@ cargo --version
 
 ### 2. Install and authenticate Codex CLI
 
-`muffintui` launches the `codex` command inside the Codex pane, so the CLI must already be installed and authenticated on your machine.
+`muffin` launches the `codex` command inside the Codex pane, so the CLI must already be installed and authenticated on your machine.
 
 Verify that the command is available:
 
@@ -87,6 +89,8 @@ Install from the local checkout:
 ```bash
 cargo install --path .
 ```
+
+That local install also provides the `muffin` executable.
 
 ## Run
 
