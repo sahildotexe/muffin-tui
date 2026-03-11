@@ -40,6 +40,14 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         .iter()
         .map(|entry| {
             let indent = "  ".repeat(entry.depth);
+            let marker = if entry.is_updated { "● " } else { "  " };
+            let marker_style = if entry.is_updated {
+                Style::default()
+                    .fg(theme.accent_warn)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.muted)
+            };
             let style = if entry.is_updated {
                 Style::default()
                     .fg(theme.accent_warn)
@@ -47,7 +55,11 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
             } else {
                 Style::default().fg(theme.text)
             };
-            ListItem::new(Line::from(vec![Span::raw(indent), Span::styled(entry.display.clone(), style)]))
+            ListItem::new(Line::from(vec![
+                Span::raw(indent),
+                Span::styled(marker, marker_style),
+                Span::styled(entry.display.clone(), style),
+            ]))
         })
         .collect();
 
