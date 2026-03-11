@@ -19,7 +19,8 @@ fn render_editor_line(line: &str) -> Buffer {
             ratatui::text::Line::styled(
                 line.to_string(),
                 ratatui::style::Style::default()
-                    .fg(ratatui::style::Color::Rgb(108, 214, 141)),
+                    .fg(ratatui::style::Color::Rgb(46, 160, 67))
+                    .bg(ratatui::style::Color::Rgb(20, 61, 39)),
             )
         } else {
             ratatui::text::Line::raw(line.to_string())
@@ -49,6 +50,7 @@ fn draw_renders_without_panicking() {
 #[test]
 fn diff_lines_render_added_text_in_green() {
     let buffer = render_editor_line("+added");
-    assert_eq!(buffer[(0, 0)].fg, ratatui::style::Color::Rgb(108, 214, 141));
+    assert_eq!(buffer[(0, 0)].fg, ratatui::style::Color::Rgb(46, 160, 67));
+    assert_eq!(buffer[(0, 0)].bg, ratatui::style::Color::Rgb(20, 61, 39));
     assert_eq!(THEMES[0].name, "Teal Night");
 }

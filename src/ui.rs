@@ -75,12 +75,19 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         .highlight_symbol("▶ ");
     frame.render_stateful_widget(file_list, columns[0], &mut app.file_state);
 
+    let visible_editor_lines = app
+        .editor_lines
+        .iter()
+        .filter(|line| diff_line_visible(line, app.editor_mode))
+        .collect::<Vec<_>>();
+
     let editor_height = middle[0].height.saturating_sub(2) as usize;
-    let max_editor_scroll = app.editor_lines.len().saturating_sub(editor_height.max(1));
+    let max_editor_scroll = visible_editor_lines
+        .len()
+        .saturating_sub(editor_height.max(1));
     app.editor_scroll = app.editor_scroll.min(max_editor_scroll);
 
-    let editor_text = app
-        .editor_lines
+    let editor_text = visible_editor_lines
         .iter()
         .skip(app.editor_scroll)
         .take(editor_height.max(1))
@@ -211,19 +218,13 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
 fn editor_line<'a>(line: &'a str, mode: EditorMode, theme: crate::theme::Theme) -> Line<'a> {
     if mode == EditorMode::Diff {
         let style = if line.starts_with('+') && !line.starts_with("+++") {
-            Style::default().fg(Color::Rgb(108, 214, 141))
-        } else if line.starts_with('-') && !line.starts_with("---") {
-            Style::default().fg(Color::Rgb(255, 120, 117))
-        } else if line.starts_with("@@") {
             Style::default()
-                .fg(theme.border_focus)
-                .add_modifier(Modifier::BOLD)
-        } else if line.starts_with("diff --git")
-            || line.starts_with("index ")
-            || line.starts_with("---")
-            || line.starts_with("+++")
-        {
-            Style::default().fg(theme.muted)
+                .fg(Color::Rgb(46, 160, 67))
+                .bg(diff_add_bg(theme))
+        } else if line.starts_with('-') && !line.starts_with("---") {
+            Style::default()
+                .fg(Color::Rgb(248, 81, 73))
+                .bg(diff_remove_bg(theme))
         } else {
             Style::default().fg(theme.text)
         };
@@ -231,4 +232,39 @@ fn editor_line<'a>(line: &'a str, mode: EditorMode, theme: crate::theme::Theme) 
     } else {
         syntax::highlight_line(line, theme)
     }
+}
+
+fn diff_line_visible(line: &str, mode: EditorMode) -> bool {
+    if mode != EditorMode::Diff {
+        return true;
+    }
+
+    !(line.starts_with("@@")
+        || line.starts_with("diff --git")
+        || line.starts_with("index ")
+        || line.starts_with("---")
+        || line.starts_with("+++"))
+}
+
+fn diff_add_bg(theme: crate::theme::Theme) -> Color {
+    if is_light_theme(theme) {
+        Color::Rgb(204, 255, 216)
+    } else {
+        Color::Rgb(20, 61, 39)
+    }
+}
+
+fn diff_remove_bg(theme: crate::theme::Theme) -> Color {
+    if is_light_theme(theme) {
+        Color::Rgb(255, 216, 214)
+    } else {
+        Color::Rgb(73, 27, 31)
+    }
+}
+
+fn is_light_theme(theme: crate::theme::Theme) -> bool {
+    let ratatui::style::Color::Rgb(r, g, b) = theme.pane_bg else {
+        return false;
+    };
+    (u16::from(r) + u16::from(g) + u16::from(b)) > 500
 }

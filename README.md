@@ -1,6 +1,7 @@
 # muffintui
 
 `muffintui` is the crates.io package for a Rust terminal workspace that runs as the `muffin` command.
+It is designed to keep file navigation, shell work, and AI-assisted workflows in one terminal UI.
 
 ![muffin TUI screenshot](./muffin-tui-v2.png)
 
