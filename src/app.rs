@@ -100,16 +100,13 @@ impl App {
             files,
             file_state,
             editor_mode: EditorMode::Normal,
-            editor_title: "Editor".to_string(),
+            editor_title: "File Viewer".to_string(),
             editor_lines: vec![
-                "// Editor pane".to_string(),
+                "// File Viewer pane".to_string(),
                 "// Select a file in the left pane and press Enter to open it.".to_string(),
             ],
             editor_scroll: 0,
-            terminal_output: vec![
-                "$ cargo run".to_string(),
-                "Launching muffintui...".to_string(),
-            ],
+            terminal_output: Vec::new(),
             terminal_input: String::new(),
             terminal_scroll: 0,
             codex,
@@ -308,7 +305,7 @@ impl App {
 
     fn reload_editor_contents(&mut self) -> io::Result<()> {
         let Some(path) = self.editor_path.as_ref() else {
-            self.editor_title = format!("Editor [{}]", self.editor_mode.label());
+            self.editor_title = viewer_title(None, self.editor_mode);
             self.editor_lines = vec!["Open a file to view it.".to_string()];
             self.editor_scroll = 0;
             return Ok(());
@@ -319,11 +316,7 @@ impl App {
             EditorMode::Normal => read_file_lines(path)?,
             EditorMode::Diff => git_diff_for_file(&self.root_dir, relative)?,
         };
-        self.editor_title = format!(
-            "Editor - {} [{}] Ctrl+D toggle",
-            relative.display(),
-            self.editor_mode.label()
-        );
+        self.editor_title = viewer_title(Some(relative), self.editor_mode);
         self.editor_scroll = 0;
         Ok(())
     }
@@ -347,7 +340,7 @@ impl App {
             }],
             file_state,
             editor_mode: EditorMode::Normal,
-            editor_title: "Editor".to_string(),
+            editor_title: "File Viewer".to_string(),
             editor_lines: vec!["hello".to_string()],
             editor_scroll: 0,
             terminal_output: vec!["existing".to_string()],
@@ -358,6 +351,18 @@ impl App {
             expanded_dirs: HashSet::new(),
             editor_path: None,
         }
+    }
+}
+
+fn viewer_title(path: Option<&Path>, mode: EditorMode) -> String {
+    let label = match mode {
+        EditorMode::Normal => "File Viewer",
+        EditorMode::Diff => "Diff Viewer",
+    };
+
+    match path {
+        Some(path) => format!("{label} - {} [{}] Ctrl+D toggle", path.display(), mode.label()),
+        None => format!("{label} [{}]", mode.label()),
     }
 }
 

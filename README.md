@@ -5,7 +5,7 @@
 It gives you four panes inside a project directory:
 
 - Files
-- Editor
+- File Viewer / Diff Viewer
 - Terminal
 - Codex
 
@@ -116,17 +116,21 @@ cargo run
 ## What It Does
 
 - Shows a navigable file tree rooted at the current directory
-- Opens the selected file in a read-only editor pane
-- Toggles an editor diff mode against `HEAD~1`
+- Opens the selected file in a read-only file viewer
+- Highlights source code in normal file view with theme-aware colors
+- Toggles a diff viewer against `HEAD~1`
 - Runs shell commands inside the built-in terminal pane with `sh -lc`
 - Embeds a live `codex` terminal session in the right pane
 - Cycles between three built-in themes
+- Ships with integration tests under `tests/`
 
 Notes:
 
 - `.git` and `target` are intentionally hidden from the file tree
+- The built-in terminal pane starts empty
 - Diff mode falls back to a message when the repository has no `HEAD~1`
 - If the initial `codex` launch fails, pressing `Enter` in the Codex pane retries the session
+- If `codex` is not installed, the rest of the TUI still works and the Codex pane shows the startup error
 
 ## Keybindings
 
@@ -142,11 +146,11 @@ Notes:
 - `Up` or `k`: move selection up
 - `Down` or `j`: move selection down
 - `Enter` on a directory: expand or collapse it
-- `Enter` on a file: open it in the editor pane
+- `Enter` on a file: open it in the file viewer
 
-### Editor Pane
+### File Viewer / Diff Viewer
 
-- `Ctrl+D`: toggle normal view and diff view
+- `Ctrl+D`: toggle between file view and diff view
 - `PageUp`: scroll up
 - `PageDown`: scroll down
 
@@ -179,4 +183,12 @@ Then publish:
 
 ```bash
 cargo publish
+```
+
+## Test
+
+Run the integration test suite with:
+
+```bash
+cargo test
 ```

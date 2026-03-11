@@ -8,6 +8,7 @@ use ratatui::{
 
 use crate::{
     app::{App, EditorMode, Focus},
+    syntax,
     theme::{THEMES, pane_block},
 };
 
@@ -209,6 +210,6 @@ fn editor_line<'a>(line: &'a str, mode: EditorMode, theme: crate::theme::Theme) 
         };
         Line::styled(line.to_string(), style)
     } else {
-        Line::styled(line.to_string(), Style::default().fg(theme.text))
+        syntax::highlight_line(line, theme)
     }
 }

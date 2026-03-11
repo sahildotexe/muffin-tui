@@ -84,7 +84,7 @@ fn opens_selected_file_into_editor() {
     app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
     assert_eq!(app.focus, Focus::Editor);
-    assert_eq!(app.editor_title, "Editor - notes.txt [Normal] Ctrl+D toggle");
+    assert_eq!(app.editor_title, "File Viewer - notes.txt [Normal] Ctrl+D toggle");
     assert_eq!(app.editor_lines, vec!["first".to_string(), "second".to_string()]);
 
     fs::remove_dir_all(root).unwrap();
