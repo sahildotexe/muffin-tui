@@ -114,12 +114,7 @@ Note:
 
 ## Publishing
 
-Before publishing to `crates.io`, update these fields in `Cargo.toml`:
-
-- `repository`
-- `homepage`
-
-Then publish with:
+Publish with:
 
 ```bash
 cargo login
