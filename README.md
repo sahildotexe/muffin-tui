@@ -18,6 +18,56 @@ It starts in the current working directory and uses that directory as:
 - Rust and Cargo
 - `codex` installed and available on `PATH`
 
+## Setup Prerequisites
+
+### 1. Install Rust and Cargo
+
+If `rustc` and `cargo` are not installed yet, install them with `rustup`:
+
+```bash
+curl https://sh.rustup.rs -sSf | sh
+```
+
+After installation, restart your shell or load Cargo's environment:
+
+```bash
+source "$HOME/.cargo/env"
+```
+
+Verify the installation:
+
+```bash
+rustc --version
+cargo --version
+```
+
+### 2. Install and authenticate Codex CLI
+
+`muffintui` launches the `codex` command inside the Codex pane, so the CLI must already be installed and authenticated on your machine.
+
+Verify that the command is available:
+
+```bash
+codex --version
+```
+
+If you still need to authenticate, run:
+
+```bash
+codex login
+```
+
+Then confirm the CLI is ready before starting `muffintui`.
+
+### 3. Sanity check
+
+Before installing or running `muffintui`, this should work:
+
+```bash
+cargo --version
+codex --version
+```
+
 ## Install
 
 Install from crates.io:
