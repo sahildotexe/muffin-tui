@@ -139,6 +139,7 @@ cargo run -- --claude
 ## What It Does
 
 - Shows a navigable file tree rooted at the current directory
+- Highlights updated files and changed directories in the Files pane using the active theme
 - Opens the selected file in a read-only file viewer
 - Highlights source code in normal file view with theme-aware colors
 - Toggles a diff viewer against `HEAD~1`
@@ -172,6 +173,11 @@ Notes:
 - `Down` or `j`: move selection down
 - `Enter` on a directory: expand or collapse it
 - `Enter` on a file: open it in the file viewer
+
+Notes:
+
+- Files with git changes are highlighted
+- Directories are highlighted when they contain changed files
 
 ### File Viewer / Diff Viewer
 

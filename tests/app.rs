@@ -81,6 +81,7 @@ fn opens_selected_file_into_editor() {
         display: "  notes.txt".to_string(),
         is_dir: false,
         depth: 0,
+        is_updated: false,
     }];
     app.focus = Focus::FileTree;
 

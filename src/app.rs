@@ -343,6 +343,7 @@ impl App {
                 display: "  example.txt".to_string(),
                 is_dir: false,
                 depth: 0,
+                is_updated: false,
             }],
             file_state,
             editor_mode: EditorMode::Normal,

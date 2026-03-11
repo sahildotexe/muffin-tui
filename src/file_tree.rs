@@ -2,6 +2,7 @@ use std::{
     collections::HashSet,
     fs, io,
     path::{Path, PathBuf},
+    process::Command,
 };
 
 #[derive(Clone)]
@@ -10,14 +11,16 @@ pub struct FileEntry {
     pub display: String,
     pub is_dir: bool,
     pub depth: usize,
+    pub is_updated: bool,
 }
 
 pub fn collect_visible_file_entries(
     root: &Path,
     expanded_dirs: &HashSet<PathBuf>,
 ) -> io::Result<Vec<FileEntry>> {
+    let updated_paths = collect_updated_paths(root).unwrap_or_default();
     let mut out = Vec::new();
-    collect_visible_file_entries_recursive(root, root, expanded_dirs, 0, &mut out)?;
+    collect_visible_file_entries_recursive(root, root, expanded_dirs, &updated_paths, 0, &mut out)?;
     Ok(out)
 }
 
@@ -29,6 +32,7 @@ fn collect_visible_file_entries_recursive(
     root: &Path,
     dir: &Path,
     expanded_dirs: &HashSet<PathBuf>,
+    updated_paths: &HashSet<PathBuf>,
     depth: usize,
     out: &mut Vec<FileEntry>,
 ) -> io::Result<()> {
@@ -49,6 +53,11 @@ fn collect_visible_file_entries_recursive(
         }
 
         let is_dir = entry.file_type()?.is_dir();
+        let is_updated = if is_dir {
+            updated_paths.iter().any(|candidate| candidate.starts_with(&path))
+        } else {
+            updated_paths.contains(&path)
+        };
         let icon = if is_dir {
             if expanded_dirs.contains(&path) {
                 "▾"
@@ -69,10 +78,18 @@ fn collect_visible_file_entries_recursive(
             display,
             is_dir,
             depth,
+            is_updated,
         });
 
         if is_dir && expanded_dirs.contains(&path) {
-            collect_visible_file_entries_recursive(root, &path, expanded_dirs, depth + 1, out)?;
+            collect_visible_file_entries_recursive(
+                root,
+                &path,
+                expanded_dirs,
+                updated_paths,
+                depth + 1,
+                out,
+            )?;
         }
     }
 
@@ -82,8 +99,44 @@ fn collect_visible_file_entries_recursive(
             display: "(empty)".to_string(),
             is_dir: false,
             depth: 0,
+            is_updated: false,
         });
     }
 
     Ok(())
+}
+
+fn collect_updated_paths(root: &Path) -> io::Result<HashSet<PathBuf>> {
+    let output = Command::new("git")
+        .arg("status")
+        .arg("--porcelain")
+        .arg("--untracked-files=normal")
+        .current_dir(root)
+        .output()?;
+
+    if !output.status.success() {
+        return Ok(HashSet::new());
+    }
+
+    let mut updated = HashSet::new();
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        if line.len() < 4 {
+            continue;
+        }
+
+        let raw_path = &line[3..];
+        let path_str = raw_path
+            .rsplit_once(" -> ")
+            .map(|(_, path)| path)
+            .unwrap_or(raw_path)
+            .trim_matches('"');
+
+        if path_str.is_empty() {
+            continue;
+        }
+
+        updated.insert(root.join(path_str));
+    }
+
+    Ok(updated)
 }

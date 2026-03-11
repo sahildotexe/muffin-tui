@@ -68,3 +68,63 @@ fn collapse_directory_removes_descendants() {
     assert!(!expanded.contains(&root.join("dir").join("child")));
     assert!(expanded.contains(&root.join("other")));
 }
+
+#[test]
+fn marks_updated_files_and_parent_directories() {
+    let root = temp_test_dir("git-updated");
+    fs::create_dir_all(root.join("src")).unwrap();
+    fs::write(root.join("src").join("main.rs"), "fn main() {}\n").unwrap();
+
+    assert!(std::process::Command::new("git")
+        .arg("init")
+        .current_dir(&root)
+        .output()
+        .unwrap()
+        .status
+        .success());
+    assert!(std::process::Command::new("git")
+        .args(["config", "user.email", "test@example.com"])
+        .current_dir(&root)
+        .output()
+        .unwrap()
+        .status
+        .success());
+    assert!(std::process::Command::new("git")
+        .args(["config", "user.name", "Test User"])
+        .current_dir(&root)
+        .output()
+        .unwrap()
+        .status
+        .success());
+    assert!(std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(&root)
+        .output()
+        .unwrap()
+        .status
+        .success());
+    assert!(std::process::Command::new("git")
+        .args(["commit", "-m", "init"])
+        .current_dir(&root)
+        .output()
+        .unwrap()
+        .status
+        .success());
+
+    fs::write(root.join("src").join("main.rs"), "fn main() { println!(\"hi\"); }\n").unwrap();
+
+    let mut expanded = HashSet::new();
+    expanded.insert(root.join("src"));
+    let entries = collect_visible_file_entries(&root, &expanded).unwrap();
+
+    let src_dir = entries.iter().find(|entry| entry.display == "▾ src/").unwrap();
+    let main_file = entries
+        .iter()
+        .find(|entry| entry.display == "  main.rs")
+        .unwrap();
+
+    assert!(src_dir.is_updated);
+    assert!(main_file.is_updated);
+
+    fs::remove_dir_all(root).unwrap();
+}
