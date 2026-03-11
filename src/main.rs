@@ -283,6 +283,12 @@ impl App {
             return;
         }
 
+        if is_terminal_clear_command(trimmed) {
+            self.terminal_output.clear();
+            self.terminal_scroll = 0;
+            return;
+        }
+
         push_capped_line(&mut self.terminal_output, format!("$ {}", trimmed));
         let output = run_shell_command(trimmed);
         if output.is_empty() {
@@ -475,7 +481,10 @@ fn ui(frame: &mut Frame, app: &mut App) {
     let root = frame.area();
     let theme = THEMES[app.theme_index];
 
-    frame.render_widget(Block::default().style(Style::default().bg(theme.app_bg)), root);
+    frame.render_widget(
+        Block::default().style(Style::default().bg(theme.app_bg)),
+        root,
+    );
 
     let columns = Layout::default()
         .direction(Direction::Horizontal)
@@ -528,7 +537,11 @@ fn ui(frame: &mut Frame, app: &mut App) {
     let editor = Paragraph::new(editor_text)
         .style(Style::default().bg(theme.pane_bg).fg(theme.text))
         .wrap(Wrap { trim: false })
-        .block(pane_block(&app.editor_title, app.focus == Focus::Editor, theme));
+        .block(pane_block(
+            &app.editor_title,
+            app.focus == Focus::Editor,
+            theme,
+        ));
 
     frame.render_widget(editor, middle[0]);
 
@@ -542,9 +555,7 @@ fn ui(frame: &mut Frame, app: &mut App) {
         Span::styled("$ ", Style::default().fg(theme.border_focus)),
         Span::styled(app.terminal_input.as_str(), Style::default().fg(theme.text)),
     ]));
-    let max_terminal_scroll = terminal_lines
-        .len()
-        .saturating_sub(terminal_height.max(1));
+    let max_terminal_scroll = terminal_lines.len().saturating_sub(terminal_height.max(1));
     app.terminal_scroll = app.terminal_scroll.min(max_terminal_scroll);
     let end = terminal_lines.len().saturating_sub(app.terminal_scroll);
     let start = end.saturating_sub(terminal_height.max(1));
@@ -563,7 +574,11 @@ fn ui(frame: &mut Frame, app: &mut App) {
 
     let codex_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Min(8), Constraint::Length(1)])
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Min(8),
+            Constraint::Length(1),
+        ])
         .split(columns[2]);
 
     let codex_header_style = if app.focus == Focus::Codex {
@@ -579,9 +594,7 @@ fn ui(frame: &mut Frame, app: &mut App) {
         Span::styled(" Codex ", codex_header_style),
         Span::styled(
             format!("live session  [{0}]  Shift+Tab theme", theme.name),
-            Style::default()
-                .fg(theme.muted)
-                .bg(theme.pane_bg),
+            Style::default().fg(theme.muted).bg(theme.pane_bg),
         ),
     ]))
     .style(Style::default().bg(theme.pane_bg));
@@ -623,7 +636,9 @@ fn ui(frame: &mut Frame, app: &mut App) {
         Span::raw("  "),
         Span::styled(
             " Tab ",
-            Style::default().fg(theme.title_focus_fg).bg(theme.accent_info),
+            Style::default()
+                .fg(theme.title_focus_fg)
+                .bg(theme.accent_info),
         ),
         Span::styled(
             "leave pane",
@@ -632,12 +647,11 @@ fn ui(frame: &mut Frame, app: &mut App) {
         Span::raw("  "),
         Span::styled(
             " PgUp/PgDn ",
-            Style::default().fg(theme.title_focus_fg).bg(theme.accent_scroll),
+            Style::default()
+                .fg(theme.title_focus_fg)
+                .bg(theme.accent_scroll),
         ),
-        Span::styled(
-            "scroll",
-            Style::default().fg(theme.muted).bg(theme.pane_bg),
-        ),
+        Span::styled("scroll", Style::default().fg(theme.muted).bg(theme.pane_bg)),
     ]))
     .style(Style::default().bg(theme.pane_bg));
 
@@ -685,12 +699,52 @@ fn run_shell_command(cmd: &str) -> Vec<String> {
 }
 
 fn bytes_to_lines(bytes: &[u8]) -> Vec<String> {
-    let text = String::from_utf8_lossy(bytes);
+    let text = strip_ansi_escape_sequences(&String::from_utf8_lossy(bytes));
     let mut lines: Vec<String> = text.lines().map(ToOwned::to_owned).collect();
     if lines.is_empty() && !text.trim().is_empty() {
         lines.push(text.trim().to_string());
     }
     lines
+}
+
+fn is_terminal_clear_command(cmd: &str) -> bool {
+    matches!(cmd, "clear" | "clear;" | "cls" | "cls;")
+}
+
+fn strip_ansi_escape_sequences(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch != '\u{1b}' {
+            out.push(ch);
+            continue;
+        }
+
+        match chars.next() {
+            Some('[') => {
+                while let Some(next) = chars.next() {
+                    if ('@'..='~').contains(&next) {
+                        break;
+                    }
+                }
+            }
+            Some(']') => loop {
+                match chars.next() {
+                    Some('\u{7}') | None => break,
+                    Some('\u{1b}') => {
+                        if chars.next_if_eq(&'\\').is_some() {
+                            break;
+                        }
+                    }
+                    Some(_) => {}
+                }
+            },
+            Some(_) | None => {}
+        }
+    }
+
+    out
 }
 
 fn push_capped_line(lines: &mut Vec<String>, line: String) {
@@ -888,10 +942,7 @@ impl CodexSession {
             }
 
             if out.is_empty() {
-                out.push(Line::styled(
-                    "",
-                    Style::default().bg(theme.pane_bg),
-                ));
+                out.push(Line::styled("", Style::default().bg(theme.pane_bg)));
             }
 
             out
@@ -1008,6 +1059,26 @@ fn handle_terminal_scrollback_key(key: KeyEvent, terminal_scroll: &mut usize) ->
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::{bytes_to_lines, is_terminal_clear_command};
+
+    #[test]
+    fn detects_clear_commands_for_builtin_terminal() {
+        assert!(is_terminal_clear_command("clear"));
+        assert!(is_terminal_clear_command("clear;"));
+        assert!(is_terminal_clear_command("cls"));
+        assert!(!is_terminal_clear_command("clear now"));
+        assert!(!is_terminal_clear_command("printf '\\033[2J'"));
+    }
+
+    #[test]
+    fn strips_ansi_escape_sequences_from_shell_output() {
+        let lines = bytes_to_lines(b"\x1b[H\x1b[2Jclean\r\n\x1b]0;title\x07next\r\n");
+        assert_eq!(lines, vec!["clean", "next"]);
+    }
+}
+
 fn editor_line<'a>(line: &'a str, mode: EditorMode, theme: Theme) -> Line<'a> {
     if mode == EditorMode::Diff {
         let style = if line.starts_with('+') && !line.starts_with("+++") {
@@ -1066,7 +1137,9 @@ fn git_diff_for_file(root_dir: &Path, relative_path: &Path) -> io::Result<Vec<St
         .output()?;
 
     if !output.status.success() {
-        return Ok(vec![String::from_utf8_lossy(&output.stderr).trim().to_string()]);
+        return Ok(vec![
+            String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        ]);
     }
 
     let mut lines = bytes_to_lines(&output.stdout);
@@ -1117,7 +1190,11 @@ fn collect_visible_file_entries_recursive(
 
         let is_dir = entry.file_type()?.is_dir();
         let icon = if is_dir {
-            if expanded_dirs.contains(&path) { "▾" } else { "▸" }
+            if expanded_dirs.contains(&path) {
+                "▾"
+            } else {
+                "▸"
+            }
         } else {
             " "
         };
@@ -1135,13 +1212,7 @@ fn collect_visible_file_entries_recursive(
         });
 
         if is_dir && expanded_dirs.contains(&path) {
-            collect_visible_file_entries_recursive(
-                root,
-                &path,
-                expanded_dirs,
-                depth + 1,
-                out,
-            )?;
+            collect_visible_file_entries_recursive(root, &path, expanded_dirs, depth + 1, out)?;
         }
     }
 
