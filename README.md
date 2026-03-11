@@ -1,17 +1,17 @@
 # muffintui
 
-`muffintui` is a terminal workspace for code navigation and command execution with four panes:
+`muffintui` is a Rust terminal workspace for working inside a project directory with four panes:
 
 - Files
 - Editor
 - Terminal
 - Codex
 
-It is designed to be launched inside any project directory. The current working directory becomes:
+It starts in the current working directory and uses that directory as:
 
-- the root of the Files pane
+- the root of the file tree
 - the working directory for shell commands
-- the working directory for the embedded Codex session
+- the working directory for the embedded `codex` session
 
 ## Requirements
 
@@ -20,104 +20,103 @@ It is designed to be launched inside any project directory. The current working 
 
 ## Install
 
-Install from the local repository:
-
-```bash
-cargo install --path .
-```
-
-After publishing to `crates.io`, users will be able to install it with:
+Install from crates.io:
 
 ```bash
 cargo install muffintui
 ```
 
+Install from the local checkout:
+
+```bash
+cargo install --path .
+```
+
 ## Run
 
-Run in the current directory:
+Launch in the current directory:
 
 ```bash
 muffintui
 ```
 
-Run against another project:
+Launch against another project:
 
 ```bash
 cd /path/to/project
 muffintui
 ```
 
-For local development without reinstalling:
+Run without installing during local development:
 
 ```bash
 cargo run
 ```
 
-## Update After Changes
+## What It Does
 
-Reinstall the current local source:
+- Shows a navigable file tree rooted at the current directory
+- Opens the selected file in a read-only editor pane
+- Toggles an editor diff mode against `HEAD~1`
+- Runs shell commands inside the built-in terminal pane with `sh -lc`
+- Embeds a live `codex` terminal session in the right pane
+- Cycles between three built-in themes
 
-```bash
-cargo install --path .
-```
+Notes:
+
+- `.git` and `target` are intentionally hidden from the file tree
+- Diff mode falls back to a message when the repository has no `HEAD~1`
+- If the initial `codex` launch fails, pressing `Enter` in the Codex pane retries the session
 
 ## Keybindings
 
 ### Global
 
 - `Tab`: move focus to the next pane
-- `Shift+Tab`: cycle the UI theme
+- `Shift+Tab`: cycle the theme
 - `Esc`: quit
-- `Ctrl+C`: quit when not focused on Codex
+- `Ctrl+C`: quit when focus is not in the Codex pane
 
 ### Files Pane
 
 - `Up` or `k`: move selection up
 - `Down` or `j`: move selection down
-- `Enter` on a folder: expand or collapse that folder in place
-- `Enter` on a file: open the file in the editor
+- `Enter` on a directory: expand or collapse it
+- `Enter` on a file: open it in the editor pane
 
 ### Editor Pane
 
+- `Ctrl+D`: toggle normal view and diff view
 - `PageUp`: scroll up
 - `PageDown`: scroll down
-- `Ctrl+D`: toggle between normal view and diff view
-
-Editor modes:
-
-- `Normal`: show the current file contents
-- `Diff`: show `git diff HEAD~1 -- <file>` for the selected file
-
-If the repository does not have a previous commit, diff mode shows a fallback message instead.
 
 ### Terminal Pane
 
-- Type any shell command directly
-- `Enter`: run the command
-- `Backspace`: delete one character from the prompt
-- `PageUp`: scroll terminal history up
-- `PageDown`: scroll terminal history down
+- Type directly into the prompt
+- `Enter`: run the current command
+- `Backspace`: delete one character
+- `PageUp`: scroll back
+- `PageDown`: scroll forward
 - `Home`: jump to the oldest visible terminal history
-- `End`: jump back to the live prompt/output
-
-When a command runs, the terminal automatically snaps back to the latest output.
+- `End`: jump back to the live prompt
 
 ### Codex Pane
 
-- Regular typing: send keystrokes directly to the embedded `codex` session
-- `Enter`: submit input to Codex
-- `Ctrl+C`: send interrupt to Codex instead of quitting the TUI
+- Regular typing: send input to the embedded `codex` session
+- `Enter`: submit input, or retry the session if startup failed
+- `Ctrl+C`: send interrupt to `codex`
+- `Arrow keys`, `PageUp`, `PageDown`, `Home`, `End`, `Tab`, `Backspace`: forwarded to the embedded session
 
-Note:
+## Publish
 
-- Codex pane scrolling is currently handled by the embedded Codex application itself, not by `muffintui`
-
-## Publishing
-
-Publish with:
+Before publishing:
 
 ```bash
-cargo login
 cargo package
+```
+
+Then publish:
+
+```bash
 cargo publish
 ```
