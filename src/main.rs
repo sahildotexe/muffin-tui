@@ -1,21 +1,14 @@
-mod app;
-mod codex;
-mod file_tree;
-mod terminal;
-mod theme;
-mod ui;
-
 use std::{
     io,
     time::{Duration, Instant},
 };
 
-use app::App;
 use crossterm::{
     event::{self, Event},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use muffintui::{app::App, ui};
 use ratatui::{Terminal, backend::CrosstermBackend};
 
 fn main() -> io::Result<()> {

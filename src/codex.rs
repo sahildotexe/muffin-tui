@@ -243,7 +243,7 @@ fn style_from_vt100_cell(cell: &vt100::Cell, theme: Theme) -> Style {
     style
 }
 
-fn color_from_vt100(color: vt100::Color, background: bool, theme: Theme) -> Color {
+pub fn color_from_vt100(color: vt100::Color, background: bool, theme: Theme) -> Color {
     match color {
         vt100::Color::Default => {
             if background {
@@ -257,7 +257,7 @@ fn color_from_vt100(color: vt100::Color, background: bool, theme: Theme) -> Colo
     }
 }
 
-fn ansi_256_to_ratatui(idx: u8) -> Color {
+pub fn ansi_256_to_ratatui(idx: u8) -> Color {
     const ANSI_BASE: [(u8, u8, u8); 16] = [
         (0, 0, 0),
         (128, 0, 0),
@@ -297,41 +297,6 @@ fn ansi_256_to_ratatui(idx: u8) -> Color {
     }
 }
 
-fn io_other<E: ToString>(err: E) -> io::Error {
+pub fn io_other<E: ToString>(err: E) -> io::Error {
     io::Error::other(err.to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{ansi_256_to_ratatui, color_from_vt100, io_other};
-    use crate::theme::THEMES;
-    use ratatui::style::Color;
-    use std::io::ErrorKind;
-
-    #[test]
-    fn translates_default_vt100_colors_from_theme() {
-        let theme = THEMES[0];
-        assert_eq!(
-            color_from_vt100(vt100::Color::Default, false, theme),
-            theme.text
-        );
-        assert_eq!(
-            color_from_vt100(vt100::Color::Default, true, theme),
-            theme.pane_bg
-        );
-    }
-
-    #[test]
-    fn translates_ansi_palette_entries() {
-        assert_eq!(ansi_256_to_ratatui(0), Color::Rgb(0, 0, 0));
-        assert_eq!(ansi_256_to_ratatui(15), Color::Rgb(255, 255, 255));
-        assert_eq!(ansi_256_to_ratatui(232), Color::Rgb(8, 8, 8));
-    }
-
-    #[test]
-    fn wraps_custom_error_as_io_error() {
-        let err = io_other("boom");
-        assert_eq!(err.kind(), ErrorKind::Other);
-        assert_eq!(err.to_string(), "boom");
-    }
 }
