@@ -119,6 +119,7 @@ impl App {
     }
 
     pub fn on_tick(&mut self) {
+        self.refresh_files();
         self.fallback_to_shell_if_needed();
     }
 
@@ -360,6 +361,11 @@ impl App {
             editor_path: None,
         }
     }
+
+    #[doc(hidden)]
+    pub fn test_refresh_files(&mut self) {
+        self.refresh_files();
+    }
 }
 
 fn viewer_title(path: Option<&Path>, mode: EditorMode) -> String {
@@ -375,6 +381,23 @@ fn viewer_title(path: Option<&Path>, mode: EditorMode) -> String {
 }
 
 impl App {
+    fn refresh_files(&mut self) {
+        let selected_path = self
+            .file_state
+            .selected()
+            .and_then(|index| self.files.get(index))
+            .map(|entry| entry.path.clone());
+
+        if let Ok(files) = collect_visible_file_entries(&self.root_dir, &self.expanded_dirs) {
+            self.files = files;
+            let selected = selected_path
+                .as_ref()
+                .and_then(|path| self.files.iter().position(|entry| &entry.path == path))
+                .or_else(|| (!self.files.is_empty()).then_some(0));
+            self.file_state.select(selected);
+        }
+    }
+
     fn fallback_to_shell_if_needed(&mut self) {
         let should_fallback = self.right_pane_mode != SessionMode::Shell
             && self

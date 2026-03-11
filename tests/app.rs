@@ -119,3 +119,69 @@ fn ended_non_shell_session_falls_back_to_shell() {
     assert!(app.right_pane_status.contains("Switched to shell"));
     assert!(app.right_pane_session.is_some());
 }
+
+#[test]
+fn on_tick_refreshes_changed_file_indicators() {
+    let root = temp_test_dir("live-refresh");
+    fs::create_dir_all(root.join("src")).unwrap();
+    let file_path = root.join("src").join("main.rs");
+    fs::write(&file_path, "fn main() {}\n").unwrap();
+
+    assert!(std::process::Command::new("git")
+        .arg("init")
+        .current_dir(&root)
+        .output()
+        .unwrap()
+        .status
+        .success());
+    assert!(std::process::Command::new("git")
+        .args(["config", "user.email", "test@example.com"])
+        .current_dir(&root)
+        .output()
+        .unwrap()
+        .status
+        .success());
+    assert!(std::process::Command::new("git")
+        .args(["config", "user.name", "Test User"])
+        .current_dir(&root)
+        .output()
+        .unwrap()
+        .status
+        .success());
+    assert!(std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(&root)
+        .output()
+        .unwrap()
+        .status
+        .success());
+    assert!(std::process::Command::new("git")
+        .args(["commit", "-m", "init"])
+        .current_dir(&root)
+        .output()
+        .unwrap()
+        .status
+        .success());
+
+    let mut app = App::test_fixture();
+    app.root_dir = root.clone();
+    app.files = vec![FileEntry {
+        path: root.join("src"),
+        display: "▸ src/".to_string(),
+        is_dir: true,
+        depth: 0,
+        is_updated: false,
+    }];
+
+    fs::write(&file_path, "fn main() { println!(\"updated\"); }\n").unwrap();
+    app.test_refresh_files();
+
+    let refreshed = app
+        .files
+        .iter()
+        .find(|entry| entry.path == root.join("src"))
+        .unwrap();
+    assert!(refreshed.is_updated);
+
+    fs::remove_dir_all(root).unwrap();
+}

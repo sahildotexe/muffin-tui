@@ -1,6 +1,6 @@
 [package]
 name = "muffintui"
-version = "0.1.9"
+version = "0.1.10"
 edition = "2024"
 description = "A terminal workspace that combines a file tree, editor, shell, and embedded Codex pane"
 license = "MIT"

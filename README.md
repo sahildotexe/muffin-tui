@@ -218,6 +218,8 @@ Then publish:
 cargo publish
 ```
 
+Contributions and issue reports are welcome.
+
 ## Test
 
 Run the integration test suite with:
