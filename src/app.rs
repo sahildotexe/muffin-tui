@@ -154,6 +154,11 @@ impl App {
             return;
         }
 
+        if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q') {
+            self.running = false;
+            return;
+        }
+
         if self.show_remote_qr && key.code == KeyCode::Esc {
             self.show_remote_qr = false;
             return;
@@ -177,7 +182,6 @@ impl App {
         }
 
         match key.code {
-            KeyCode::Esc => self.running = false,
             KeyCode::Tab if self.codex_focus_mode => self.handle_focused_input(key),
             KeyCode::Tab => self.focus = self.focus.next(),
             KeyCode::BackTab => self.theme_index = (self.theme_index + 1) % THEMES.len(),

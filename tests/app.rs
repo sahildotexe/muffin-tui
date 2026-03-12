@@ -82,6 +82,15 @@ fn ctrl_c_outside_codex_stops_app() {
 }
 
 #[test]
+fn ctrl_q_quits_app() {
+    let mut app = App::test_fixture();
+
+    app.on_key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL));
+
+    assert!(!app.running);
+}
+
+#[test]
 fn esc_closes_remote_overlay_before_exiting() {
     let mut app = App::test_fixture();
     app.show_remote_qr = true;
@@ -89,6 +98,15 @@ fn esc_closes_remote_overlay_before_exiting() {
     app.on_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
 
     assert!(!app.show_remote_qr);
+    assert!(app.running);
+}
+
+#[test]
+fn esc_does_not_quit_without_remote_overlay() {
+    let mut app = App::test_fixture();
+
+    app.on_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+
     assert!(app.running);
 }
 

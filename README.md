@@ -263,7 +263,7 @@ If `Ctrl+R` fails to start remote share, check the terminal pane for the exact e
 
 - `Tab`: move focus to the next pane
 - `Shift+Tab`: cycle the theme
-- `Esc`: quit
+- `Ctrl+Q`: quit
 - `Ctrl+C`: quit when focus is not in the Codex pane
 
 ### Files Pane
