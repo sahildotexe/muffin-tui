@@ -23,6 +23,7 @@ It starts in the current working directory and uses that directory as:
 - Rust and Cargo
 - `codex` on `PATH` if you want `--codex`
 - `claude` on `PATH` if you want `--claude`
+- `ngrok` on `PATH` if you want remote share
 
 ## Setup Prerequisites
 
@@ -69,7 +70,36 @@ If you want to start directly in Claude mode, verify that `claude` is available:
 claude --version
 ```
 
-### 3. Sanity check
+### 3. Set up ngrok for remote share
+
+Remote share uses `ngrok` to publish a temporary HTTPS URL for the local remote-control page.
+
+Install `ngrok` first. On macOS with Homebrew:
+
+```bash
+brew install ngrok/ngrok/ngrok
+```
+
+Then authenticate it with your ngrok account authtoken:
+
+```bash
+ngrok config add-authtoken YOUR_AUTHTOKEN
+```
+
+Verify that the CLI is installed and the config is valid:
+
+```bash
+ngrok version
+ngrok config check
+```
+
+Notes:
+
+- `muffin` starts `ngrok http 127.0.0.1:<port>` when you enable remote share.
+- The app also reads the local ngrok API on `127.0.0.1:4040` to discover the public URL.
+- If `ngrok` is installed but not authenticated, remote share will fail to start.
+
+### 4. Sanity check
 
 Before installing or running `muffin`, this should work:
 
@@ -151,6 +181,7 @@ cargo run -- --claude
 - Runs shell commands inside the built-in terminal pane with `sh -lc`
 - Starts the right pane as a shell by default
 - Can start the right pane with `codex` or `claude`
+- Can expose the right pane through a temporary ngrok URL for phone viewing and limited remote control
 - Cycles between three built-in themes
 - Ships with integration tests under `tests/`
 
@@ -162,6 +193,65 @@ Notes:
 - If the initial right-pane launch fails, pressing `Enter` in that pane retries the same mode
 - If a `codex` or `claude` session exits, the app automatically switches that pane back to a shell
 - If `codex` or `claude` is not installed, the rest of the TUI still works and the right pane shows the startup error
+- Remote share mirrors only the right pane session, not the full TUI
+- Remote share depends on `ngrok` being installed, logged in, and able to publish a tunnel
+
+## Remote Share
+
+Remote share lets you open the active right pane on your phone through a temporary ngrok URL.
+It is intended for lightweight approval and interruption flows while a shell, Codex, or Claude session is running.
+
+### How to start it
+
+1. Launch `muffin`.
+2. Move focus to the right pane.
+3. Press `Ctrl+R`.
+4. Scan the QR code overlay, or open the printed ngrok URL manually.
+
+When remote share starts, `muffin`:
+
+- starts a local HTTP server on an ephemeral port
+- starts `ngrok http 127.0.0.1:<port>`
+- prints the public URL in the terminal pane
+- shows a QR overlay in the TUI
+- writes a QR SVG to your temp directory
+
+The overlay can be dismissed with `Esc`. This only closes the overlay. The remote share session keeps running until you press `Ctrl+R` again in the right pane.
+
+### What the phone page can do
+
+The mobile page polls the active right pane and shows:
+
+- the current session mode
+- the current right-pane status line
+- a recent text snapshot of the right pane output
+
+It also exposes four actions:
+
+- `Approve / Enter`: sends `Enter`
+- `Send y`: sends `y`
+- `Send n`: sends `n`
+- `Ctrl+C`: interrupts the active right-pane session
+
+This is enough for common remote approval prompts, continuing a command, rejecting a prompt, or interrupting a long-running session.
+
+### Limits and behavior
+
+- Remote share only works while there is a live right-pane session to control.
+- If no live session exists, remote actions are ignored.
+- The shared page is text-only and optimized for phone-sized screens.
+- The page refreshes automatically on an interval, so it is a near-live mirror rather than a full interactive terminal.
+- The shared URL includes a random token and is scoped to the current app session.
+- Stopping remote share kills the ngrok tunnel.
+
+### Troubleshooting
+
+If `Ctrl+R` fails to start remote share, check the terminal pane for the exact error. Common causes:
+
+- `ngrok` is not installed
+- `ngrok` is installed but not authenticated
+- `ngrok` could not publish a public URL within the startup timeout
+- local access to the ngrok API on `127.0.0.1:4040` is unavailable
 
 ## Keybindings
 
@@ -205,6 +295,7 @@ Notes:
 - Regular typing: send input to the active shell, Codex, or Claude session
 - `Enter`: submit input, or retry the session if startup failed
 - `Ctrl+C`: send interrupt to the active right-pane session
+- `Ctrl+R`: start or stop remote share
 - `Arrow keys`, `PageUp`, `PageDown`, `Home`, `End`, `Tab`, `Backspace`: forwarded to the embedded session
 
 ## Publish
