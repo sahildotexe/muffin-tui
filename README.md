@@ -12,6 +12,8 @@ It gives you four panes inside a project directory:
 - Terminal
 - Shell / Codex / Claude
 
+The right pane can also enter a dedicated focus mode that expands that live session to the full terminal while keeping the same embedded shell, Codex, or Claude process.
+
 It starts in the current working directory and uses that directory as:
 
 - the root of the file tree
@@ -181,6 +183,7 @@ cargo run -- --claude
 - Runs shell commands inside the built-in terminal pane with `sh -lc`
 - Starts the right pane as a shell by default
 - Can start the right pane with `codex` or `claude`
+- Can toggle the right pane into a full-screen focus mode with `Ctrl+F`
 - Can expose the right pane through a temporary ngrok URL for phone viewing and limited remote control
 - Cycles between three built-in themes
 - Ships with integration tests under `tests/`
@@ -194,6 +197,7 @@ Notes:
 - If a `codex` or `claude` session exits, the app automatically switches that pane back to a shell
 - If `codex` or `claude` is not installed, the rest of the TUI still works and the right pane shows the startup error
 - Remote share mirrors only the right pane session, not the full TUI
+- Focus mode only changes the layout; it does not start a separate session
 - Remote share depends on `ngrok` being installed, logged in, and able to publish a tunnel
 
 ## Remote Share
@@ -295,8 +299,14 @@ Notes:
 - Regular typing: send input to the active shell, Codex, or Claude session
 - `Enter`: submit input, or retry the session if startup failed
 - `Ctrl+C`: send interrupt to the active right-pane session
+- `Ctrl+F`: toggle right-pane focus mode
 - `Ctrl+R`: start or stop remote share
 - `Arrow keys`, `PageUp`, `PageDown`, `Home`, `End`, `Tab`, `Backspace`: forwarded to the embedded session
+
+Notes:
+
+- While focus mode is off, `Tab` leaves the right pane and moves focus to the next pane
+- While focus mode is on, `Tab` is sent directly to the embedded session and the right pane fills the screen
 
 ## Publish
 
@@ -306,7 +316,13 @@ Before publishing:
 cargo package
 ```
 
-Then publish:
+Push the release commit first:
+
+```bash
+git push
+```
+
+Then publish the crate:
 
 ```bash
 cargo publish

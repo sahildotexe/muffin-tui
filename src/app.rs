@@ -77,6 +77,7 @@ pub struct App {
     pub right_pane_mode: SessionMode,
     pub right_pane_session: Option<CommandSession>,
     pub right_pane_status: String,
+    pub codex_focus_mode: bool,
     pub remote_share: Option<RemoteShare>,
     pub show_remote_qr: bool,
     expanded_dirs: HashSet<PathBuf>,
@@ -117,6 +118,7 @@ impl App {
             right_pane_mode: mode,
             right_pane_session,
             right_pane_status,
+            codex_focus_mode: false,
             remote_share: None,
             show_remote_qr: false,
             expanded_dirs,
@@ -165,8 +167,18 @@ impl App {
             return;
         }
 
+        if self.focus == Focus::Codex
+            && key.modifiers.contains(KeyModifiers::CONTROL)
+            && key.code == KeyCode::Char('f')
+        {
+            self.codex_focus_mode = !self.codex_focus_mode;
+            self.focus = Focus::Codex;
+            return;
+        }
+
         match key.code {
             KeyCode::Esc => self.running = false,
+            KeyCode::Tab if self.codex_focus_mode => self.handle_focused_input(key),
             KeyCode::Tab => self.focus = self.focus.next(),
             KeyCode::BackTab => self.theme_index = (self.theme_index + 1) % THEMES.len(),
             _ => self.handle_focused_input(key),
@@ -380,6 +392,7 @@ impl App {
             right_pane_mode: SessionMode::Shell,
             right_pane_session: None,
             right_pane_status: "Failed to start shell session".to_string(),
+            codex_focus_mode: false,
             remote_share: None,
             show_remote_qr: false,
             expanded_dirs: HashSet::new(),

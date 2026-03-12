@@ -47,6 +47,33 @@ fn global_keys_update_focus_and_theme() {
 }
 
 #[test]
+fn ctrl_f_toggles_codex_focus_mode_only_in_codex_pane() {
+    let mut app = App::test_fixture();
+
+    app.focus = Focus::Editor;
+    app.on_key(KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL));
+    assert!(!app.codex_focus_mode);
+
+    app.focus = Focus::Codex;
+    app.on_key(KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL));
+    assert!(app.codex_focus_mode);
+
+    app.on_key(KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL));
+    assert!(!app.codex_focus_mode);
+}
+
+#[test]
+fn tab_does_not_leave_codex_while_focus_mode_is_active() {
+    let mut app = App::test_fixture();
+    app.focus = Focus::Codex;
+    app.codex_focus_mode = true;
+
+    app.on_key(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+
+    assert_eq!(app.focus, Focus::Codex);
+}
+
+#[test]
 fn ctrl_c_outside_codex_stops_app() {
     let mut app = App::test_fixture();
     app.focus = Focus::Terminal;

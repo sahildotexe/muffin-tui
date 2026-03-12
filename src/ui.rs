@@ -21,6 +21,14 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         root,
     );
 
+    if app.codex_focus_mode {
+        draw_codex_pane(frame, app, root, theme);
+        if app.show_remote_qr {
+            draw_remote_overlay(frame, app, theme);
+        }
+        return;
+    }
+
     let columns = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
@@ -131,6 +139,14 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         .block(pane_block("Terminal", app.focus == Focus::Terminal, theme));
     frame.render_widget(terminal_pane, middle[1]);
 
+    draw_codex_pane(frame, app, columns[2], theme);
+
+    if app.show_remote_qr {
+        draw_remote_overlay(frame, app, theme);
+    }
+}
+
+fn draw_codex_pane(frame: &mut Frame, app: &mut App, area: Rect, theme: crate::theme::Theme) {
     let codex_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -138,7 +154,7 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
             Constraint::Min(8),
             Constraint::Length(1),
         ])
-        .split(columns[2]);
+        .split(area);
 
     let codex_header_style = if app.focus == Focus::Codex {
         Style::default()
@@ -149,13 +165,19 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
         Style::default().fg(theme.title).bg(theme.pane_bg)
     };
 
+    let header_suffix = if app.codex_focus_mode {
+        format!("focus mode  [{0}]  Ctrl+F exit", theme.name)
+    } else {
+        format!("live session  [{0}]  Shift+Tab theme", theme.name)
+    };
+
     let right_pane_header = Paragraph::new(Line::from(vec![
         Span::styled(
             format!(" {} ", app.right_pane_mode.pane_title()),
             codex_header_style,
         ),
         Span::styled(
-            format!("live session  [{0}]  Shift+Tab theme", theme.name),
+            header_suffix,
             Style::default().fg(theme.muted).bg(theme.pane_bg),
         ),
     ]))
@@ -182,6 +204,17 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     let codex = Paragraph::new(codex_output_lines).style(Style::default().bg(theme.pane_bg));
     frame.render_widget(codex, codex_chunks[1]);
 
+    let tab_hint = if app.codex_focus_mode {
+        "send tab"
+    } else {
+        "leave pane"
+    };
+    let focus_hint = if app.codex_focus_mode {
+        "exit focus"
+    } else {
+        "focus mode"
+    };
+
     let codex_footer = Paragraph::new(Line::from(vec![
         Span::styled(
             " Ctrl+C ",
@@ -201,8 +234,17 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
                 .fg(theme.title_focus_fg)
                 .bg(theme.accent_info),
         ),
+        Span::styled(tab_hint, Style::default().fg(theme.muted).bg(theme.pane_bg)),
+        Span::raw("  "),
         Span::styled(
-            "leave pane",
+            " Ctrl+F ",
+            Style::default()
+                .fg(theme.title_focus_fg)
+                .bg(theme.border_focus)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            focus_hint,
             Style::default().fg(theme.muted).bg(theme.pane_bg),
         ),
         Span::raw("  "),
@@ -225,10 +267,6 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     ]))
     .style(Style::default().bg(theme.pane_bg));
     frame.render_widget(codex_footer, codex_chunks[2]);
-
-    if app.show_remote_qr {
-        draw_remote_overlay(frame, app, theme);
-    }
 }
 
 fn editor_line<'a>(line: &'a str, mode: EditorMode, theme: crate::theme::Theme) -> Line<'a> {
