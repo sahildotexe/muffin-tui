@@ -6,11 +6,57 @@ use ratatui::{
 use crate::theme::Theme;
 
 const KEYWORDS: &[&str] = &[
-    "as", "async", "await", "break", "const", "continue", "crate", "else", "enum", "extern",
-    "false", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut",
-    "pub", "ref", "return", "self", "Self", "static", "struct", "trait", "true", "type", "use",
-    "where", "while", "yield", "class", "def", "elif", "export", "from", "function", "import",
-    "interface", "package", "private", "protected", "public", "switch", "var", "void",
+    "as",
+    "async",
+    "await",
+    "break",
+    "const",
+    "continue",
+    "crate",
+    "else",
+    "enum",
+    "extern",
+    "false",
+    "fn",
+    "for",
+    "if",
+    "impl",
+    "in",
+    "let",
+    "loop",
+    "match",
+    "mod",
+    "move",
+    "mut",
+    "pub",
+    "ref",
+    "return",
+    "self",
+    "Self",
+    "static",
+    "struct",
+    "trait",
+    "true",
+    "type",
+    "use",
+    "where",
+    "while",
+    "yield",
+    "class",
+    "def",
+    "elif",
+    "export",
+    "from",
+    "function",
+    "import",
+    "interface",
+    "package",
+    "private",
+    "protected",
+    "public",
+    "switch",
+    "var",
+    "void",
 ];
 
 pub fn highlight_line<'a>(line: &'a str, theme: Theme) -> Line<'a> {
@@ -71,8 +117,7 @@ fn line_comment_start(chars: &[char], i: usize) -> Option<usize> {
         return Some(i);
     }
 
-    let is_hash_comment = chars[i] == '#'
-        && chars[..i].iter().all(|ch| ch.is_whitespace());
+    let is_hash_comment = chars[i] == '#' && chars[..i].iter().all(|ch| ch.is_whitespace());
     is_hash_comment.then_some(i)
 }
 
@@ -137,7 +182,11 @@ fn consume_ident(chars: &[char], start: usize) -> (String, usize) {
 fn classify_ident(token: &str, theme: Theme) -> Option<Style> {
     if KEYWORDS.contains(&token) {
         Some(keyword_style(theme))
-    } else if token.chars().next().is_some_and(|ch| ch.is_ascii_uppercase()) {
+    } else if token
+        .chars()
+        .next()
+        .is_some_and(|ch| ch.is_ascii_uppercase())
+    {
         Some(type_style(theme))
     } else {
         None

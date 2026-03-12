@@ -75,49 +75,66 @@ fn marks_updated_files_and_parent_directories() {
     fs::create_dir_all(root.join("src")).unwrap();
     fs::write(root.join("src").join("main.rs"), "fn main() {}\n").unwrap();
 
-    assert!(std::process::Command::new("git")
-        .arg("init")
-        .current_dir(&root)
-        .output()
-        .unwrap()
-        .status
-        .success());
-    assert!(std::process::Command::new("git")
-        .args(["config", "user.email", "test@example.com"])
-        .current_dir(&root)
-        .output()
-        .unwrap()
-        .status
-        .success());
-    assert!(std::process::Command::new("git")
-        .args(["config", "user.name", "Test User"])
-        .current_dir(&root)
-        .output()
-        .unwrap()
-        .status
-        .success());
-    assert!(std::process::Command::new("git")
-        .args(["add", "."])
-        .current_dir(&root)
-        .output()
-        .unwrap()
-        .status
-        .success());
-    assert!(std::process::Command::new("git")
-        .args(["commit", "-m", "init"])
-        .current_dir(&root)
-        .output()
-        .unwrap()
-        .status
-        .success());
+    assert!(
+        std::process::Command::new("git")
+            .arg("init")
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    assert!(
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@example.com"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    assert!(
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test User"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    assert!(
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    assert!(
+        std::process::Command::new("git")
+            .args(["commit", "-m", "init"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
 
-    fs::write(root.join("src").join("main.rs"), "fn main() { println!(\"hi\"); }\n").unwrap();
+    fs::write(
+        root.join("src").join("main.rs"),
+        "fn main() { println!(\"hi\"); }\n",
+    )
+    .unwrap();
 
     let mut expanded = HashSet::new();
     expanded.insert(root.join("src"));
     let entries = collect_visible_file_entries(&root, &expanded).unwrap();
 
-    let src_dir = entries.iter().find(|entry| entry.display == "▾ src/").unwrap();
+    let src_dir = entries
+        .iter()
+        .find(|entry| entry.display == "▾ src/")
+        .unwrap();
     let main_file = entries
         .iter()
         .find(|entry| entry.display == "  main.rs")

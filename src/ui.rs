@@ -1,9 +1,9 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, List, ListItem, Paragraph, Wrap},
+    widgets::{Block, Clear, List, ListItem, Paragraph, Wrap},
 };
 
 use crate::{
@@ -150,7 +150,10 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
     };
 
     let right_pane_header = Paragraph::new(Line::from(vec![
-        Span::styled(format!(" {} ", app.right_pane_mode.pane_title()), codex_header_style),
+        Span::styled(
+            format!(" {} ", app.right_pane_mode.pane_title()),
+            codex_header_style,
+        ),
         Span::styled(
             format!("live session  [{0}]  Shift+Tab theme", theme.name),
             Style::default().fg(theme.muted).bg(theme.pane_bg),
@@ -210,9 +213,22 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
                 .bg(theme.accent_scroll),
         ),
         Span::styled("scroll", Style::default().fg(theme.muted).bg(theme.pane_bg)),
+        Span::raw("  "),
+        Span::styled(
+            " Ctrl+R ",
+            Style::default()
+                .fg(theme.title_focus_fg)
+                .bg(theme.border_focus)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("remote", Style::default().fg(theme.muted).bg(theme.pane_bg)),
     ]))
     .style(Style::default().bg(theme.pane_bg));
     frame.render_widget(codex_footer, codex_chunks[2]);
+
+    if app.show_remote_qr {
+        draw_remote_overlay(frame, app, theme);
+    }
 }
 
 fn editor_line<'a>(line: &'a str, mode: EditorMode, theme: crate::theme::Theme) -> Line<'a> {
@@ -267,4 +283,69 @@ fn is_light_theme(theme: crate::theme::Theme) -> bool {
         return false;
     };
     (u16::from(r) + u16::from(g) + u16::from(b)) > 500
+}
+
+fn draw_remote_overlay(frame: &mut Frame, app: &App, theme: crate::theme::Theme) {
+    let Some(remote) = app.remote_share.as_ref() else {
+        return;
+    };
+
+    let area = centered_rect(frame.area(), 76, 84);
+    let body = remote
+        .qr_lines()
+        .iter()
+        .map(|line| Line::styled(line.clone(), Style::default().fg(theme.text)))
+        .chain([
+            Line::from(""),
+            Line::styled(
+                "Scan to open the ngrok URL on your phone.",
+                Style::default().fg(theme.text),
+            ),
+            Line::styled(
+                remote.url().to_string(),
+                Style::default().fg(theme.border_focus),
+            ),
+            Line::styled(
+                format!("QR SVG: {}", remote.qr_svg_path().display()),
+                Style::default().fg(theme.muted),
+            ),
+            Line::styled(
+                "Phone actions: Enter, y, n, Ctrl+C.",
+                Style::default().fg(theme.muted),
+            ),
+            Line::styled(
+                "Esc closes this overlay. Ctrl+R stops sharing.",
+                Style::default().fg(theme.muted),
+            ),
+        ])
+        .collect::<Vec<_>>();
+
+    frame.render_widget(Clear, area);
+    frame.render_widget(
+        Paragraph::new(body)
+            .block(pane_block("Remote Share", true, theme))
+            .wrap(Wrap { trim: false })
+            .style(Style::default().bg(theme.pane_bg).fg(theme.text)),
+        area,
+    );
+}
+
+fn centered_rect(area: Rect, width_percent: u16, height_percent: u16) -> Rect {
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - height_percent) / 2),
+            Constraint::Percentage(height_percent),
+            Constraint::Percentage((100 - height_percent) / 2),
+        ])
+        .split(area);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - width_percent) / 2),
+            Constraint::Percentage(width_percent),
+            Constraint::Percentage((100 - width_percent) / 2),
+        ])
+        .split(vertical[1])[1]
 }

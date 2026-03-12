@@ -8,7 +8,10 @@ use std::io::ErrorKind;
 #[test]
 fn translates_default_vt100_colors_from_theme() {
     let theme = THEMES[0];
-    assert_eq!(color_from_vt100(vt100::Color::Default, false, theme), theme.text);
+    assert_eq!(
+        color_from_vt100(vt100::Color::Default, false, theme),
+        theme.text
+    );
     assert_eq!(
         color_from_vt100(vt100::Color::Default, true, theme),
         theme.pane_bg
@@ -35,9 +38,18 @@ fn session_modes_expose_expected_titles_and_statuses() {
     assert_eq!(SessionMode::Codex.pane_title(), "Codex");
     assert_eq!(SessionMode::Claude.pane_title(), "Claude");
 
-    assert_eq!(SessionMode::Shell.success_status(), "Shell session connected");
-    assert_eq!(SessionMode::Codex.success_status(), "Codex session connected");
-    assert_eq!(SessionMode::Claude.success_status(), "Claude session connected");
+    assert_eq!(
+        SessionMode::Shell.success_status(),
+        "Shell session connected"
+    );
+    assert_eq!(
+        SessionMode::Codex.success_status(),
+        "Codex session connected"
+    );
+    assert_eq!(
+        SessionMode::Claude.success_status(),
+        "Claude session connected"
+    );
 }
 
 #[test]

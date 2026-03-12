@@ -31,8 +31,10 @@ fn update_input_buffer_collects_and_submits_text() {
     );
     assert_eq!(buffer, "a");
 
-    let submitted =
-        update_input_buffer(&mut buffer, KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    let submitted = update_input_buffer(
+        &mut buffer,
+        KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+    );
     assert_eq!(submitted.as_deref(), Some("a"));
     assert!(buffer.is_empty());
 }

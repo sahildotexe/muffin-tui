@@ -2,6 +2,7 @@ pub mod app;
 pub mod cli;
 pub mod codex;
 pub mod file_tree;
+pub mod remote;
 pub mod syntax;
 pub mod terminal;
 pub mod theme;

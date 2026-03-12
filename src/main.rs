@@ -1,6 +1,5 @@
 use std::{
-    env,
-    io,
+    env, io,
     time::{Duration, Instant},
 };
 

@@ -10,7 +10,8 @@ use ratatui::widgets::ListState;
 
 use crate::{
     codex::{CommandSession, SessionMode},
-    file_tree::{FileEntry, collect_visible_file_entries, collapse_directory},
+    file_tree::{FileEntry, collapse_directory, collect_visible_file_entries},
+    remote::{RemoteAction, RemoteShare},
     terminal::{
         handle_scrollback_key, is_terminal_clear_command, push_capped_line, run_shell_command,
         update_input_buffer,
@@ -76,6 +77,8 @@ pub struct App {
     pub right_pane_mode: SessionMode,
     pub right_pane_session: Option<CommandSession>,
     pub right_pane_status: String,
+    pub remote_share: Option<RemoteShare>,
+    pub show_remote_qr: bool,
     expanded_dirs: HashSet<PathBuf>,
     editor_path: Option<PathBuf>,
 }
@@ -88,10 +91,11 @@ impl App {
         let mut file_state = ListState::default();
         file_state.select((!files.is_empty()).then_some(0));
 
-        let (right_pane_session, right_pane_status) = match CommandSession::start(mode, &cwd, 80, 24) {
-            Ok(session) => (Some(session), mode.success_status()),
-            Err(err) => (None, mode.failure_status(&err)),
-        };
+        let (right_pane_session, right_pane_status) =
+            match CommandSession::start(mode, &cwd, 80, 24) {
+                Ok(session) => (Some(session), mode.success_status()),
+                Err(err) => (None, mode.failure_status(&err)),
+            };
 
         Ok(Self {
             running: true,
@@ -113,6 +117,8 @@ impl App {
             right_pane_mode: mode,
             right_pane_session,
             right_pane_status,
+            remote_share: None,
+            show_remote_qr: false,
             expanded_dirs,
             editor_path: None,
         })
@@ -121,6 +127,7 @@ impl App {
     pub fn on_tick(&mut self) {
         self.refresh_files();
         self.fallback_to_shell_if_needed();
+        self.sync_remote_share();
     }
 
     pub fn on_key(&mut self, key: KeyEvent) {
@@ -132,13 +139,29 @@ impl App {
             if self.focus == Focus::Codex {
                 if let Some(session) = self.right_pane_session.as_mut() {
                     if let Err(err) = session.send_ctrl_c() {
-                        self.right_pane_status =
-                            format!("Failed to send Ctrl+C to {}: {}", self.right_pane_mode.pane_title().to_lowercase(), err);
+                        self.right_pane_status = format!(
+                            "Failed to send Ctrl+C to {}: {}",
+                            self.right_pane_mode.pane_title().to_lowercase(),
+                            err
+                        );
                     }
                 }
             } else {
                 self.running = false;
             }
+            return;
+        }
+
+        if self.show_remote_qr && key.code == KeyCode::Esc {
+            self.show_remote_qr = false;
+            return;
+        }
+
+        if self.focus == Focus::Codex
+            && key.modifiers.contains(KeyModifiers::CONTROL)
+            && key.code == KeyCode::Char('r')
+        {
+            self.toggle_remote_share();
             return;
         }
 
@@ -357,6 +380,8 @@ impl App {
             right_pane_mode: SessionMode::Shell,
             right_pane_session: None,
             right_pane_status: "Failed to start shell session".to_string(),
+            remote_share: None,
+            show_remote_qr: false,
             expanded_dirs: HashSet::new(),
             editor_path: None,
         }
@@ -375,7 +400,11 @@ fn viewer_title(path: Option<&Path>, mode: EditorMode) -> String {
     };
 
     match path {
-        Some(path) => format!("{label} - {} [{}] Ctrl+D toggle", path.display(), mode.label()),
+        Some(path) => format!(
+            "{label} - {} [{}] Ctrl+D toggle",
+            path.display(),
+            mode.label()
+        ),
         None => format!("{label} [{}]", mode.label()),
     }
 }
@@ -415,13 +444,86 @@ impl App {
         match CommandSession::start(SessionMode::Shell, &self.root_dir, 80, 24) {
             Ok(session) => {
                 self.right_pane_session = Some(session);
-                self.right_pane_status =
-                    "Previous session ended. Switched to shell.".to_string();
+                self.right_pane_status = "Previous session ended. Switched to shell.".to_string();
             }
             Err(err) => {
                 self.right_pane_status =
                     format!("Previous session ended. Failed to start shell: {err}");
             }
+        }
+    }
+
+    fn toggle_remote_share(&mut self) {
+        if self.remote_share.is_some() {
+            self.remote_share = None;
+            self.show_remote_qr = false;
+            push_capped_line(
+                &mut self.terminal_output,
+                "Remote share stopped.".to_string(),
+            );
+            return;
+        }
+
+        match RemoteShare::start() {
+            Ok(remote) => {
+                push_capped_line(
+                    &mut self.terminal_output,
+                    format!("Remote share ready at {}", remote.url()),
+                );
+                self.show_remote_qr = true;
+                self.remote_share = Some(remote);
+            }
+            Err(err) => {
+                push_capped_line(
+                    &mut self.terminal_output,
+                    format!("Failed to start remote share: {err}"),
+                );
+            }
+        }
+    }
+
+    fn sync_remote_share(&mut self) {
+        let Some(remote) = self.remote_share.as_ref() else {
+            return;
+        };
+
+        let lines = if let Some(session) = self.right_pane_session.as_ref() {
+            session.snapshot_plain_lines(40, 120)
+        } else {
+            vec![self.right_pane_status.clone()]
+        };
+        remote.update_snapshot(
+            self.right_pane_mode.pane_title(),
+            self.right_pane_status.clone(),
+            lines,
+        );
+
+        for action in remote.drain_actions() {
+            self.apply_remote_action(action);
+        }
+    }
+
+    fn apply_remote_action(&mut self, action: RemoteAction) {
+        let Some(session) = self.right_pane_session.as_mut() else {
+            self.right_pane_status = "Remote action ignored: no live session".to_string();
+            return;
+        };
+
+        let result = match action {
+            RemoteAction::Enter => {
+                session.send_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE))
+            }
+            RemoteAction::ApproveYes => {
+                session.send_key(KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE))
+            }
+            RemoteAction::RejectNo => {
+                session.send_key(KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE))
+            }
+            RemoteAction::Interrupt => session.send_ctrl_c(),
+        };
+
+        if let Err(err) = result {
+            self.right_pane_status = format!("Remote control error: {err}");
         }
     }
 }

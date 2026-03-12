@@ -107,6 +107,8 @@ Launch in the current directory:
 muffin
 ```
 
+Use `muffin --help` to list available startup flags.
+
 Launch with Codex in the right pane:
 
 ```bash

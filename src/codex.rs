@@ -269,6 +269,46 @@ impl CommandSession {
         }
     }
 
+    pub fn snapshot_plain_lines(&self, rows: u16, cols: u16) -> Vec<String> {
+        if let Ok(parser) = self.parser.lock() {
+            let screen = parser.screen();
+            let (screen_rows, screen_cols) = screen.size();
+            let visible_rows = rows.min(screen_rows);
+            let visible_cols = cols.min(screen_cols);
+            let row_offset = screen_rows.saturating_sub(visible_rows);
+            let mut out = Vec::with_capacity(visible_rows as usize);
+
+            for row in row_offset..screen_rows {
+                let mut line = String::new();
+                for col in 0..visible_cols {
+                    let Some(cell) = screen.cell(row, col) else {
+                        continue;
+                    };
+
+                    if cell.is_wide_continuation() {
+                        continue;
+                    }
+
+                    if cell.has_contents() {
+                        line.push_str(&cell.contents());
+                    } else {
+                        line.push(' ');
+                    }
+                }
+
+                out.push(line.trim_end().to_string());
+            }
+
+            if out.is_empty() {
+                out.push(String::new());
+            }
+
+            out
+        } else {
+            vec!["[session output unavailable]".to_string()]
+        }
+    }
+
     pub fn is_finished(&self) -> bool {
         self.finished.load(Ordering::SeqCst)
     }

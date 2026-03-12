@@ -54,7 +54,9 @@ fn collect_visible_file_entries_recursive(
 
         let is_dir = entry.file_type()?.is_dir();
         let is_updated = if is_dir {
-            updated_paths.iter().any(|candidate| candidate.starts_with(&path))
+            updated_paths
+                .iter()
+                .any(|candidate| candidate.starts_with(&path))
         } else {
             updated_paths.contains(&path)
         };

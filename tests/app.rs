@@ -55,6 +55,17 @@ fn ctrl_c_outside_codex_stops_app() {
 }
 
 #[test]
+fn esc_closes_remote_overlay_before_exiting() {
+    let mut app = App::test_fixture();
+    app.show_remote_qr = true;
+
+    app.on_key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+
+    assert!(!app.show_remote_qr);
+    assert!(app.running);
+}
+
+#[test]
 fn clear_command_only_clears_terminal_pane() {
     let mut app = App::test_fixture();
     app.focus = Focus::Terminal;
@@ -88,8 +99,14 @@ fn opens_selected_file_into_editor() {
     app.on_key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
 
     assert_eq!(app.focus, Focus::Editor);
-    assert_eq!(app.editor_title, "File Viewer - notes.txt [Normal] Ctrl+D toggle");
-    assert_eq!(app.editor_lines, vec!["first".to_string(), "second".to_string()]);
+    assert_eq!(
+        app.editor_title,
+        "File Viewer - notes.txt [Normal] Ctrl+D toggle"
+    );
+    assert_eq!(
+        app.editor_lines,
+        vec!["first".to_string(), "second".to_string()]
+    );
 
     fs::remove_dir_all(root).unwrap();
 }
@@ -107,9 +124,8 @@ fn ended_non_shell_session_falls_back_to_shell() {
     let mut app = App::test_fixture();
     app.root_dir = std::env::current_dir().unwrap();
     app.right_pane_mode = SessionMode::Codex;
-    app.right_pane_session = Some(
-        CommandSession::start_command("false", &app.root_dir, 80, 24).unwrap(),
-    );
+    app.right_pane_session =
+        Some(CommandSession::start_command("false", &app.root_dir, 80, 24).unwrap());
     app.right_pane_status = SessionMode::Codex.success_status();
 
     thread::sleep(Duration::from_millis(50));
@@ -127,41 +143,51 @@ fn on_tick_refreshes_changed_file_indicators() {
     let file_path = root.join("src").join("main.rs");
     fs::write(&file_path, "fn main() {}\n").unwrap();
 
-    assert!(std::process::Command::new("git")
-        .arg("init")
-        .current_dir(&root)
-        .output()
-        .unwrap()
-        .status
-        .success());
-    assert!(std::process::Command::new("git")
-        .args(["config", "user.email", "test@example.com"])
-        .current_dir(&root)
-        .output()
-        .unwrap()
-        .status
-        .success());
-    assert!(std::process::Command::new("git")
-        .args(["config", "user.name", "Test User"])
-        .current_dir(&root)
-        .output()
-        .unwrap()
-        .status
-        .success());
-    assert!(std::process::Command::new("git")
-        .args(["add", "."])
-        .current_dir(&root)
-        .output()
-        .unwrap()
-        .status
-        .success());
-    assert!(std::process::Command::new("git")
-        .args(["commit", "-m", "init"])
-        .current_dir(&root)
-        .output()
-        .unwrap()
-        .status
-        .success());
+    assert!(
+        std::process::Command::new("git")
+            .arg("init")
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    assert!(
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@example.com"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    assert!(
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test User"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    assert!(
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
+    assert!(
+        std::process::Command::new("git")
+            .args(["commit", "-m", "init"])
+            .current_dir(&root)
+            .output()
+            .unwrap()
+            .status
+            .success()
+    );
 
     let mut app = App::test_fixture();
     app.root_dir = root.clone();
